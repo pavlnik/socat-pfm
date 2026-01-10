@@ -115,7 +115,7 @@ After=network.target
 User=root
 WorkingDirectory=$TARGET_DIR/backend
 # Pass the port as an environment variable
-Environment="FLASK_PORT=$WEB_PORT"
+Environment="PORT=$WEB_PORT"
 ExecStart=$TARGET_DIR/backend/venv/bin/python $TARGET_DIR/backend/app.py
 Restart=always
 RestartSec=5
