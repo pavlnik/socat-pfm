@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socat Manager</title>
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjM2I4MmY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHJ4PSIyIiByeT0iMiIvPjxyZWN0IHg9IjIiIHk9IjE0IiB3aWR0aD0iMjAiIGhlaWdodD0iOCIgcng9IjIiIHJ5PSIyIi8+PGxpbmUgeDE9IjYiIHkxPSI2IiB4Mj0iNi4wMSIgeTI9IjYiLz48bGluZSB4MT0iNiIgeTE9IjE4IiB4Mj0iNi4wMSIgeTI9IjE4Ii8+PC9zdmc+">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="container">
+        <div class="card login-card">
+            <h2>Authorization</h2>
+            <form id="login-form">
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required placeholder="••••••">
+                </div>
+                <button type="submit" class="btn primary full-width">Unlock</button>
+                <div id="login-error" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Screen -->
+    <div id="app-screen" class="hidden">
+        <nav class="navbar">
+            <div class="logo">Socat <span>Manager</span></div>
+            <div class="user-info">
+                <button id="open-pwd-modal-btn" class="btn small">Password</button>
+                <button id="logout-btn" class="btn small">Logout</button>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <div class="toolbar">
+                <h3>Active Rules</h3>
+                <button id="open-modal-btn" class="btn primary">+ Add Rule</button>
+            </div>
+
+            <div id="rules-list" class="rules-grid"></div>
+        </div>
+    </div>
+
+    <!-- Rule Modal -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">New Rule</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="rule-form">
+                <input type="hidden" id="rule_id">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>Inbound IP</label>
+                        <input type="text" id="src_ip" value="0.0.0.0">
+                    </div>
+                    <div class="input-group">
+                        <label>Inbound Port(s)</label>
+                        <input type="text" id="src_port" required placeholder="8080 or 8000-8005">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>Protocol</label>
+                        <select id="proto">
+                            <option value="TCP">TCP</option>
+                            <option value="UDP">UDP</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>Destination IP</label>
+                        <input type="text" id="dst_ip" required placeholder="10.8.0.2">
+                    </div>
+                    <div class="input-group">
+                        <label>Destination Port(s)</label>
+                        <input type="text" id="dst_port" required placeholder="8080 or 9000-9005">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn primary">Save Rule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div id="pwd-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Change Password</h3>
+                <span class="close-pwd-modal">&times;</span>
+            </div>
+            <form id="pwd-form">
+                <div class="input-group">
+                    <label>Current Password</label>
+                    <input type="password" id="current_pwd" required>
+                </div>
+                <div class="input-group">
+                    <label>New Password</label>
+                    <input type="password" id="new_pwd" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary close-pwd-modal-btn">Cancel</button>
+                    <button type="submit" class="btn primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
