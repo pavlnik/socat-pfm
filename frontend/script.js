@@ -4,38 +4,115 @@ const ICONS = {
     trash: '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>'
 };
 
+// Elements
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
 const modal = document.getElementById('modal');
 const pwdModal = document.getElementById('pwd-modal');
-const loginForm = document.getElementById('login-form');
+const confirmModal = document.getElementById('confirm-modal');
+const notificationContainer = document.getElementById('notification-container');
 const ruleForm = document.getElementById('rule-form');
-const pwdForm = document.getElementById('pwd-form');
 
-// --- Input Validation ---
+// --- NOTIFICATIONS ---
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    
+    notificationContainer.appendChild(toast);
+    
+    // Auto remove
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// --- INPUT VALIDATION ---
 function validateIpInput(event) {
-    let value = event.target.value.replace(/[^0-9.]/g, '');
-    const parts = value.split('.');
+    let value = event.target.value;
+    
+    // 1. Allow only numbers and dots
+    value = value.replace(/[^0-9.]/g, '');
+    
+    // 2. Prevent multiple dots
+    value = value.replace(/\.\./g, '.');
+
+    // 3. Split into octets
+    let parts = value.split('.');
+    
+    // 4. Limit to 4 octets
+    if (parts.length > 4) {
+        parts = parts.slice(0, 4);
+        value = parts.join('.');
+    }
+
+    // 5. Check limits (0-255) for each part
     const fixedParts = parts.map(part => {
         if (part === '') return '';
         const num = parseInt(part, 10);
         if (num > 255) return '255';
         return part;
     });
-    if (value !== event.target.value) event.target.value = value;
-    const lastPart = parts[parts.length - 1];
+
+    // 6. Update input value if cleaned value differs
+    if (value !== event.target.value) {
+        event.target.value = value;
+    }
+    
+    // Check the last typing part immediately
+    const lastIndex = parts.length - 1;
+    const lastPart = parts[lastIndex];
     if (lastPart && parseInt(lastPart) > 255) {
-         fixedParts[fixedParts.length - 1] = '255';
+         fixedParts[lastIndex] = '255';
          event.target.value = fixedParts.join('.');
     }
 }
+
 function validatePortInput(event) {
-    let value = event.target.value.replace(/[^0-9-]/g, '');
+    let value = event.target.value;
+    
+    // 1. Allow only numbers and hyphen
+    value = value.replace(/[^0-9-]/g, '');
+    
+    // 2. Remove leading hyphen
+    if (value.startsWith('-')) {
+        value = value.substring(1);
+    }
+
+    // 3. Allow only ONE hyphen
+    const firstHyphenIndex = value.indexOf('-');
+    if (firstHyphenIndex !== -1) {
+        // Keep part before hyphen + hyphen + part after (stripped of any other hyphens)
+        const before = value.substring(0, firstHyphenIndex + 1);
+        const after = value.substring(firstHyphenIndex + 1).replace(/-/g, '');
+        value = before + after;
+    }
+
+    // 4. Validate ranges (0-65535)
     const parts = value.split('-');
-    if (parts[0] && parseInt(parts[0]) > 65535) parts[0] = '65535';
-    if (parts.length > 1 && parts[1] !== '' && parseInt(parts[1]) > 65535) parts[1] = '65535';
+    
+    // Validate first port
+    if (parts[0] && parseInt(parts[0]) > 65535) {
+        parts[0] = '65535';
+    }
+    
+    // Validate second port (if exists and not empty)
+    if (parts.length > 1 && parts[1] !== '') {
+         if (parseInt(parts[1]) > 65535) {
+             parts[1] = '65535';
+         }
+    }
+    
     const newValue = parts.join('-');
-    if (newValue !== event.target.value) event.target.value = newValue;
+
+    // 5. Update UI
+    if (newValue !== event.target.value) {
+        event.target.value = newValue;
+    } else if (value !== event.target.value) {
+        // Fallback if we just stripped chars via regex/logic but parts were valid
+        event.target.value = value;
+    }
 }
 
 document.getElementById('src_ip').addEventListener('input', validateIpInput);
@@ -43,7 +120,7 @@ document.getElementById('dst_ip').addEventListener('input', validateIpInput);
 document.getElementById('src_port').addEventListener('input', validatePortInput);
 document.getElementById('dst_port').addEventListener('input', validatePortInput);
 
-// --- Auth & Main ---
+// --- AUTH & MAIN ---
 checkStatus();
 
 async function checkStatus() {
@@ -66,7 +143,7 @@ function showApp() {
     loadRules();
 }
 
-loginForm.addEventListener('submit', async (e) => {
+document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const password = e.target.password.value;
     const res = await fetch(`${API}/login`, {
@@ -75,11 +152,12 @@ loginForm.addEventListener('submit', async (e) => {
         body: JSON.stringify({ password })
     });
     if (res.ok) { 
-        document.getElementById('login-error').textContent = ''; 
         e.target.password.value = '';
         checkStatus(); 
-    } 
-    else { document.getElementById('login-error').textContent = 'Invalid password'; }
+        showToast('Welcome back!');
+    } else { 
+        showToast('Invalid password', 'error');
+    }
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -87,7 +165,7 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
     window.location.reload();
 });
 
-// --- Rules CRUD ---
+// --- RULES CRUD ---
 async function loadRules() {
     const res = await fetch(`${API}/rules`);
     const rules = await res.json();
@@ -103,16 +181,19 @@ function renderRules(rules) {
         div.className = `rule-card ${rule.enabled ? '' : 'disabled'}`;
         div.innerHTML = `
             <div class="rule-header">
-                <span class="badge ${rule.proto.toLowerCase()}">${rule.proto}</span>
+                <div class="rule-title">
+                    <span class="badge ${rule.proto.toLowerCase()}">${rule.proto}</span>
+                    ${rule.description ? `<span class="rule-desc" title="${rule.description}">${rule.description}</span>` : ''}
+                </div>
                 <div class="btn-group">
                     <button class="btn btn-icon" onclick="editRule(${ruleJson})" title="Edit">${ICONS.edit}</button>
-                    <button class="btn btn-icon delete" onclick="deleteRule('${rule.id}')" title="Delete">${ICONS.trash}</button>
+                    <button class="btn btn-icon delete" onclick="confirmDelete('${rule.id}')" title="Delete">${ICONS.trash}</button>
                 </div>
             </div>
             <div class="connection-visual">
                 <div><div style="font-size:0.8em; color:#888">IN (${rule.src_ip === '0.0.0.0' ? 'ALL' : rule.src_ip})</div>:${rule.src_port}</div>
                 <div class="arrow">➜</div>
-                <div style="text-align:right"><div style="font-size:0.8em; color:#888">TO (${rule.dst_ip})</div>:${rule.dst_port}</div>
+                <div style="text-align:right"><div style="font-size:0.8em; color:#888">TO ${rule.dst_ip}</div>:${rule.dst_port}</div>
             </div>
             <div class="rule-actions">
                 <div class="toggle-switch ${rule.enabled ? 'active' : ''}" onclick="toggleRule('${rule.id}')">
@@ -124,11 +205,37 @@ function renderRules(rules) {
 }
 
 async function toggleRule(id) { await fetch(`${API}/rules/${id}/toggle`, { method: 'POST' }); loadRules(); }
-async function deleteRule(id) { if(confirm('Delete rule?')) { await fetch(`${API}/rules/${id}`, { method: 'DELETE' }); loadRules(); } }
 
-function editRule(rule) {
+// --- DELETE CONFIRMATION ---
+let deleteTargetId = null;
+
+window.confirmDelete = function(id) {
+    deleteTargetId = id;
+    confirmModal.classList.remove('hidden');
+}
+
+document.getElementById('confirm-btn').onclick = async () => {
+    if (deleteTargetId) {
+        const res = await fetch(`${API}/rules/${deleteTargetId}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Rule deleted');
+            loadRules();
+        } else {
+            showToast('Error deleting rule', 'error');
+        }
+    }
+    confirmModal.classList.add('hidden');
+};
+
+document.querySelectorAll('.close-confirm-modal, .close-confirm-modal-btn').forEach(el => {
+    el.onclick = () => confirmModal.classList.add('hidden');
+});
+
+// --- EDIT & SAVE ---
+window.editRule = function(rule) {
     document.getElementById('modal-title').textContent = 'Edit Rule';
     document.getElementById('rule_id').value = rule.id;
+    document.getElementById('description').value = rule.description || '';
     document.getElementById('src_ip').value = rule.src_ip;
     document.getElementById('src_port').value = rule.src_port; 
     document.getElementById('proto').value = rule.proto;
@@ -152,25 +259,36 @@ ruleForm.addEventListener('submit', async (e) => {
     const id = document.getElementById('rule_id').value;
     const isEdit = !!id;
     const data = {
+        description: document.getElementById('description').value,
         src_ip: document.getElementById('src_ip').value,
         src_port: document.getElementById('src_port').value,
         proto: document.getElementById('proto').value,
         dst_ip: document.getElementById('dst_ip').value,
         dst_port: document.getElementById('dst_port').value,
     };
+    
     const method = isEdit ? 'PUT' : 'POST';
     const url = isEdit ? `${API}/rules/${id}` : `${API}/rules`;
+    
     const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     const json = await res.json();
-    if (res.ok) { modal.classList.add('hidden'); resetModal(); loadRules(); } 
-    else { alert('Error: ' + (json.error || 'Unknown error')); }
+    
+    if (res.ok) { 
+        modal.classList.add('hidden'); 
+        resetModal(); 
+        loadRules(); 
+        showToast(isEdit ? 'Rule updated' : 'Rule created');
+    } 
+    else { 
+        showToast(json.error || 'Unknown error', 'error'); 
+    }
 });
 
-// --- Password Change Logic ---
+// --- PASSWORD MODAL ---
 document.getElementById('open-pwd-modal-btn').onclick = () => pwdModal.classList.remove('hidden');
 document.querySelectorAll('.close-pwd-modal, .close-pwd-modal-btn').forEach(el => { el.onclick = () => pwdModal.classList.add('hidden'); });
 
-pwdForm.addEventListener('submit', async (e) => {
+document.getElementById('pwd-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const current_password = document.getElementById('current_pwd').value;
     const new_password = document.getElementById('new_pwd').value;
@@ -182,12 +300,10 @@ pwdForm.addEventListener('submit', async (e) => {
     });
     
     if (res.ok) {
-        alert("Password updated successfully");
+        showToast('Password updated successfully');
         pwdModal.classList.add('hidden');
-        pwdForm.reset();
+        e.target.reset();
     } else {
-        alert("Error: Incorrect current password");
+        showToast('Incorrect current password', 'error');
     }
 });
-
-window.deleteRule = deleteRule; window.toggleRule = toggleRule; window.editRule = editRule;
