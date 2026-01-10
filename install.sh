@@ -1,122 +1,126 @@
 #!/bin/bash
 
-# Check root permissions
+# ==========================================
+# Socat Web Manager - Installer & Manager
+# ==========================================
+
+REPO_URL="https://github.com/pavlnik/socat-web.git"
+INSTALL_DIR="/opt/socat-web-manager"
+SERVICE_NAME="socat-web"
+DEFAULT_PORT=5000
+
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check root
 if [ "$EUID" -ne 0 ]; then 
-  echo "Error: Please run this script as root (sudo ./install.sh)"
+  echo -e "${RED}Error: Please run this script as root (sudo ./install.sh)${NC}"
   exit 1
 fi
 
-# --- CONFIGURATION & PATHS ---
-SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-TARGET_DIR="/opt/socat-web"
-DB_FILE="$TARGET_DIR/backend/socat.db"
-BACKUP_DB="/tmp/socat.db.backup"
-DEFAULT_PORT=5000
+# Helper functions
+detect_os() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    else
+        echo -e "${RED}Error: Cannot detect OS.${NC}"
+        exit 1
+    fi
+}
 
-# --- INTERACTIVE SETUP ---
-echo "========================================="
-echo "   Socat Web Manager Installation"
-echo "========================================="
+install_dependencies() {
+    detect_os
+    echo -e "${YELLOW}>>> Installing system dependencies for $OS...${NC}"
+    
+    case $OS in
+        ubuntu|debian|kali)
+            apt-get update
+            apt-get install -y python3 python3-pip python3-venv socat dos2unix git
+            ;;
+        centos|rhel|fedora)
+            if [ "$OS" == "centos" ]; then yum install -y epel-release; fi
+            yum install -y python3 python3-pip socat dos2unix git
+            ;;
+        *)
+            echo -e "${YELLOW}Warning: Unknown OS. Attempting to install git/python3/socat generically...${NC}"
+            ;;
+    esac
+}
 
-read -p "Enter port for Web Interface [Default: $DEFAULT_PORT]: " WEB_PORT
-WEB_PORT=${WEB_PORT:-$DEFAULT_PORT}
+stop_service() {
+    if systemctl is-active --quiet $SERVICE_NAME; then
+        echo -e "${YELLOW}>>> Stopping service...${NC}"
+        systemctl stop $SERVICE_NAME
+    fi
+}
 
-if ! [[ "$WEB_PORT" =~ ^[0-9]+$ ]] || [ "$WEB_PORT" -lt 1 ] || [ "$WEB_PORT" -gt 65535 ]; then
-    echo "Error: Invalid port number. Using default $DEFAULT_PORT."
-    WEB_PORT=$DEFAULT_PORT
-fi
+get_current_port() {
+    if [ -f /etc/systemd/system/$SERVICE_NAME.service ]; then
+        grep "Environment=\"FLASK_PORT=" /etc/systemd/system/$SERVICE_NAME.service | cut -d'=' -f3 | tr -d '"'
+    else
+        echo "$DEFAULT_PORT"
+    fi
+}
 
-echo ">>> Selected Port: $WEB_PORT"
+# --- ACTIONS ---
 
-# --- DETECT OS & INSTALL DEPENDENCIES ---
-echo ">>> Detecting OS..."
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    OS=$ID
-else
-    echo "Error: Cannot detect OS. /etc/os-release not found."
-    exit 1
-fi
+do_install() {
+    echo -e "\n${GREEN}=== Install / Update ===${NC}"
+    
+    # 1. Ask for Port
+    CURRENT_PORT=$(get_current_port)
+    read -p "Enter port for Web Interface [Default: $CURRENT_PORT]: " WEB_PORT
+    WEB_PORT=${WEB_PORT:-$CURRENT_PORT}
+    
+    install_dependencies
 
-echo ">>> Installing system dependencies for $OS..."
+    # 2. Prepare Directory
+    if [ ! -d "$INSTALL_DIR" ]; then
+        echo -e "${YELLOW}>>> Cloning repository...${NC}"
+        git clone "$REPO_URL" "$INSTALL_DIR"
+    else
+        echo -e "${YELLOW}>>> Updating repository...${NC}"
+        cd "$INSTALL_DIR"
+        git reset --hard
+        git pull
+    fi
 
-case $OS in
-    ubuntu|debian|kali)
-        apt-get update
-        apt-get install -y python3 python3-pip python3-venv socat dos2unix
-        ;;
-    centos|rhel)
-        yum install -y epel-release
-        yum install -y python3 python3-pip socat dos2unix
-        ;;
-    fedora)
-        dnf install -y python3 python3-pip socat dos2unix
-        ;;
-    *)
-        echo "Warning: Unsupported OS '$OS'. Attempting to continue, assuming python3 and socat are installed..."
-        ;;
-esac
+    # 3. Create Data Directory
+    mkdir -p "$INSTALL_DIR/data"
+    # Ensure permissions for data
+    chmod 755 "$INSTALL_DIR/data"
 
-# --- BACKUP & CLEANUP ---
-if systemctl is-active --quiet socat-web; then
-    echo ">>> Stopping existing service..."
-    systemctl stop socat-web
-fi
+    # 4. Fix line endings
+    echo -e "${YELLOW}>>> Fixing line endings...${NC}"
+    find "$INSTALL_DIR" -type f -name "*.py" -exec dos2unix {} +
+    find "$INSTALL_DIR" -type f -name "*.sh" -exec dos2unix {} +
 
-if [ -f "$DB_FILE" ]; then
-    echo ">>> Backing up database..."
-    cp "$DB_FILE" "$BACKUP_DB"
-fi
+    # 5. Python Environment
+    echo -e "${YELLOW}>>> Setting up Python environment...${NC}"
+    cd "$INSTALL_DIR/backend" || exit
+    if [ ! -d "venv" ]; then python3 -m venv venv; fi
+    source venv/bin/activate
+    pip install --upgrade pip
+    pip install Flask werkzeug
 
-if [ -d "$TARGET_DIR" ]; then
-    echo ">>> Cleaning up old files..."
-    rm -rf "$TARGET_DIR"
-fi
+    # 6. Service Config
+    echo -e "${YELLOW}>>> Configuring Systemd...${NC}"
+    SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 
-# --- COPY FILES ---
-echo ">>> Copying application files..."
-mkdir -p "$TARGET_DIR"
-cp -r "$SOURCE_DIR/backend" "$TARGET_DIR/"
-cp -r "$SOURCE_DIR/frontend" "$TARGET_DIR/"
-cp "$SOURCE_DIR/README.md" "$TARGET_DIR/"
-
-# Restore Database
-if [ -f "$BACKUP_DB" ]; then
-    echo ">>> Restoring database..."
-    cp "$BACKUP_DB" "$DB_FILE"
-    rm "$BACKUP_DB"
-    # Fix permissions just in case
-    chmod 664 "$DB_FILE"
-fi
-
-# Fix line endings
-echo ">>> Converting line endings..."
-find "$TARGET_DIR" -type f -name "*.py" -exec dos2unix {} +
-
-# --- PYTHON ENVIRONMENT ---
-echo ">>> Setting up Python virtual environment..."
-cd "$TARGET_DIR/backend" || exit
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-# Installing only required packages (No six, No pam)
-pip install Flask werkzeug
-
-# --- SERVICE CONFIGURATION ---
-echo ">>> Configuring Systemd service..."
-SERVICE_FILE="/etc/systemd/system/socat-web.service"
-
-cat > $SERVICE_FILE <<EOF
+    cat > $SERVICE_FILE <<EOF
 [Unit]
 Description=Socat Web Manager Interface
 After=network.target
 
 [Service]
 User=root
-WorkingDirectory=$TARGET_DIR/backend
-# Pass the port as an environment variable
-Environment="PORT=$WEB_PORT"
-ExecStart=$TARGET_DIR/backend/venv/bin/python $TARGET_DIR/backend/app.py
+WorkingDirectory=$INSTALL_DIR/backend
+Environment="FLASK_PORT=$WEB_PORT"
+ExecStart=$INSTALL_DIR/backend/venv/bin/python $INSTALL_DIR/backend/app.py
 Restart=always
 RestartSec=5
 
@@ -124,18 +128,88 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-# Restart service
-systemctl daemon-reload
-systemctl enable socat-web
-systemctl restart socat-web
+    systemctl daemon-reload
+    systemctl enable $SERVICE_NAME
+    systemctl restart $SERVICE_NAME
 
-# --- FINISH ---
-SERVER_IP=$(hostname -I | awk '{print $1}')
-echo ""
-echo "========================================="
-echo "   Installation Complete!"
-echo "========================================="
-echo "URL: http://$SERVER_IP:$WEB_PORT"
-echo "Default Password: admin"
-echo "To change port later: Re-run install.sh or edit /etc/systemd/system/socat-web.service"
-echo ""
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    echo -e "\n${GREEN}Success! Application is running.${NC}"
+    echo -e "URL: http://$SERVER_IP:$WEB_PORT"
+    echo -e "Default Password: admin"
+}
+
+do_change_port() {
+    if [ ! -f /etc/systemd/system/$SERVICE_NAME.service ]; then
+        echo -e "${RED}Error: Service not installed.${NC}"
+        return
+    fi
+    
+    CURRENT_PORT=$(get_current_port)
+    echo -e "\n${GREEN}=== Change Port ===${NC}"
+    read -p "Enter new port [Current: $CURRENT_PORT]: " NEW_PORT
+    
+    if [[ ! "$NEW_PORT" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}Invalid port.${NC}"
+        return
+    fi
+
+    # Update systemd file using sed
+    sed -i "s/Environment=\"FLASK_PORT=[0-9]*\"/Environment=\"FLASK_PORT=$NEW_PORT\"/" /etc/systemd/system/$SERVICE_NAME.service
+    
+    systemctl daemon-reload
+    systemctl restart $SERVICE_NAME
+    
+    echo -e "${GREEN}Port changed to $NEW_PORT. Service restarted.${NC}"
+}
+
+do_uninstall() {
+    echo -e "\n${RED}=== Uninstall ===${NC}"
+    read -p "Are you sure you want to remove Socat Web Manager? (y/N): " CONFIRM
+    if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+        echo "Cancelled."
+        return
+    fi
+
+    stop_service
+    systemctl disable $SERVICE_NAME
+    rm /etc/systemd/system/$SERVICE_NAME.service
+    systemctl daemon-reload
+    
+    echo -e "${YELLOW}>>> Removing files...${NC}"
+    # Ask about data
+    read -p "Remove database and settings? (y/N): " RM_DATA
+    if [[ "$RM_DATA" == "y" || "$RM_DATA" == "Y" ]]; then
+        rm -rf "$INSTALL_DIR"
+        echo "Full cleanup completed."
+    else
+        # Remove code but keep data
+        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 ! -name "data" -exec rm -rf {} +
+        echo "App removed. Data kept in $INSTALL_DIR/data"
+    fi
+}
+
+# --- MAIN MENU ---
+
+show_menu() {
+    clear
+    echo "========================================="
+    echo "   Socat Web - Setup"
+    echo "========================================="
+    echo "1. Install / Update"
+    echo "2. Change Port"
+    echo "3. Uninstall"
+    echo "4. Exit"
+    echo "========================================="
+    read -p "Choose an option: " OPTION
+
+    case $OPTION in
+        1) do_install ;;
+        2) do_change_port ;;
+        3) do_uninstall ;;
+        4) exit 0 ;;
+        *) echo "Invalid option"; sleep 1; show_menu ;;
+    esac
+}
+
+# Run menu
+show_menu
