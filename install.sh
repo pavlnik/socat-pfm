@@ -119,7 +119,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$INSTALL_DIR/backend
-Environment="FLASK_PORT=$WEB_PORT"
+Environment="PORT=$WEB_PORT"
 ExecStart=$INSTALL_DIR/backend/venv/bin/python $INSTALL_DIR/backend/app.py
 Restart=always
 RestartSec=5
@@ -154,7 +154,7 @@ do_change_port() {
     fi
 
     # Update systemd file using sed
-    sed -i "s/Environment=\"FLASK_PORT=[0-9]*\"/Environment=\"FLASK_PORT=$NEW_PORT\"/" /etc/systemd/system/$SERVICE_NAME.service
+    sed -i "s/Environment=\"FLASK_PORT=[0-9]*\"/Environment=\"PORT=$NEW_PORT\"/" /etc/systemd/system/$SERVICE_NAME.service
     
     systemctl daemon-reload
     systemctl restart $SERVICE_NAME
