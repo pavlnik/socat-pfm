@@ -5,7 +5,7 @@
 # ==========================================
 
 REPO_URL="https://github.com/pavlnik/socat-web.git"
-INSTALL_DIR="/opt/socat-web-manager"
+INSTALL_DIR="/opt/socat-web"
 SERVICE_NAME="socat-web"
 DEFAULT_PORT=5000
 
@@ -113,7 +113,7 @@ do_install() {
 
     cat > $SERVICE_FILE <<EOF
 [Unit]
-Description=Socat Web Manager Interface
+Description=Socat Web Interface
 After=network.target
 
 [Service]
