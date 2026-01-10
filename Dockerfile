@@ -1,20 +1,18 @@
 FROM python:3.11-alpine
 
-LABEL org.opencontainers.image.source="https://github.com/pavlnik/socat-web"
-LABEL description="Socat Web"
-
 RUN apk add --no-cache socat bash
 
 WORKDIR /app
 
 RUN pip install --no-cache-dir Flask
 
-COPY . /app
+COPY backend /app/backend
+COPY frontend /app/frontend
 
-RUN mkdir -p /app/backend
+RUN mkdir -p /app/data
+VOLUME /app/data
 
-ENV FLASK_PORT=5000
-ENV PYTHONUNBUFFERED=1
+ENV PORT=5000
 
 EXPOSE $PORT
 
