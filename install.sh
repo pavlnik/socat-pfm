@@ -60,7 +60,7 @@ stop_service() {
 
 get_current_port() {
     if [ -f /etc/systemd/system/$SERVICE_NAME.service ]; then
-        grep "Environment=\"FLASK_PORT=" /etc/systemd/system/$SERVICE_NAME.service | cut -d'=' -f3 | tr -d '"'
+        grep "Environment=\"PORT=" /etc/systemd/system/$SERVICE_NAME.service | cut -d'=' -f3 | tr -d '"'
     else
         echo "$DEFAULT_PORT"
     fi
