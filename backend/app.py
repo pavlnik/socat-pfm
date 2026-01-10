@@ -11,8 +11,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
 FRONTEND_DIR = os.path.join(os.path.dirname(BASE_DIR), 'frontend')
-DB_FILE = os.path.join(BASE_DIR, 'socat.db')
+DB_FILE = os.path.join(DATA_DIR, 'socat.db')
+
+# Ensure data directory exists
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 app.secret_key = os.urandom(24)
@@ -289,3 +294,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
