@@ -1,7 +1,6 @@
 import os
 import json
 import subprocess
-import signal
 import sys
 import uuid
 import socket
@@ -15,18 +14,15 @@ DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
 FRONTEND_DIR = os.path.join(os.path.dirname(BASE_DIR), 'frontend')
 DB_FILE = os.path.join(DATA_DIR, 'socat.db')
 
-# Ensure data directory exists
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 app.secret_key = os.urandom(24)
 
-# Global process storage: {rule_id: [proc1, proc2, ...]}
 active_processes = {}
 
-# --- DATABASE HELPERS ---
-
+# --- DATABASE ---
 def get_db():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
@@ -35,20 +31,14 @@ def get_db():
 def init_db():
     conn = get_db()
     c = conn.cursor()
-    
-    # Table for configuration (password hash)
     c.execute('''CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT)''')
-    
-    # Table for rules (storing as JSON blob for simplicity and flexibility)
     c.execute('''CREATE TABLE IF NOT EXISTS rules (id TEXT PRIMARY KEY, data TEXT)''')
     
-    # Check if password exists, if not set default: "admin"
     c.execute("SELECT value FROM config WHERE key='password_hash'")
     if not c.fetchone():
         default_hash = generate_password_hash("admin")
         c.execute("INSERT INTO config (key, value) VALUES (?, ?)", ('password_hash', default_hash))
         print(">>> Default password set to: 'admin'")
-        
     conn.commit()
     conn.close()
 
@@ -80,9 +70,7 @@ def db_check_password(password):
     c.execute("SELECT value FROM config WHERE key='password_hash'")
     row = c.fetchone()
     conn.close()
-    if row and check_password_hash(row['value'], password):
-        return True
-    return False
+    return row and check_password_hash(row['value'], password)
 
 def db_change_password(new_password):
     new_hash = generate_password_hash(new_password)
@@ -92,18 +80,7 @@ def db_change_password(new_password):
     conn.commit()
     conn.close()
 
-# --- SOCAT LOGIC ---
-
-def get_external_ip():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except:
-        return "0.0.0.0"
-
+# --- LOGIC ---
 def parse_port_range(port_str):
     try:
         if '-' in str(port_str):
@@ -115,31 +92,53 @@ def parse_port_range(port_str):
     except ValueError:
         return []
 
+def check_port_conflict(new_rule, rules, ignore_id=None):
+    """
+    Checks if new_rule's source ports overlap with any existing rules
+    that have the same protocol.
+    """
+    new_ports = set(parse_port_range(new_rule['src_port']))
+    new_proto = new_rule['proto'].upper()
+
+    for r in rules:
+        if ignore_id and r['id'] == ignore_id:
+            continue
+        
+        if r['proto'].upper() != new_proto:
+            continue
+
+        existing_ports = set(parse_port_range(r['src_port']))
+        
+        # Check intersection
+        conflict = new_ports.intersection(existing_ports)
+        if conflict:
+            return f"Conflict: Port(s) {list(conflict)} are already used by rule (ID: {r['id'][:8]}...)"
+    return None
+
 def validate_rule_data(data):
     src_ports = parse_port_range(data['src_port'])
     dst_ports = parse_port_range(data['dst_port'])
     if not src_ports or not dst_ports:
         return "Invalid port format"
     if len(src_ports) != len(dst_ports):
-        return "Port range mismatch"
+        return "Port range mismatch: Source and Dest must have same count"
     return None
 
 def start_socat(rule):
     rule_id = rule['id']
-    stop_socat(rule_id) 
-    
-    if not rule.get('enabled', False):
-        return
+    stop_socat(rule_id)
+    if not rule.get('enabled', False): return
 
     src_ports = parse_port_range(rule['src_port'])
     dst_ports = parse_port_range(rule['dst_port'])
-    
     processes = []
     
     for i in range(len(src_ports)):
         sport = src_ports[i]
         dport = dst_ports[i]
         proto = rule['proto'].upper()
+        
+        # bind=... is important so we don't bind to all interfaces unless specified
         listen_part = f"{proto}-LISTEN:{sport},fork,bind={rule['src_ip']}"
         connect_part = f"{proto}:{rule['dst_ip']}:{dport}"
         cmd = ["socat", listen_part, connect_part]
@@ -171,21 +170,15 @@ def sync_processes():
             start_socat(rule)
 
 # --- API ---
-
 @app.route('/')
-def index():
-    return send_from_directory(FRONTEND_DIR, 'index.html')
+def index(): return send_from_directory(FRONTEND_DIR, 'index.html')
 
 @app.route('/<path:path>')
-def static_files(path):
-    return send_from_directory(FRONTEND_DIR, path)
+def static_files(path): return send_from_directory(FRONTEND_DIR, path)
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    data = request.json
-    password = data.get('password')
-    
-    if db_check_password(password):
+    if db_check_password(request.json.get('password')):
         session['logged_in'] = True
         return jsonify({"status": "success"})
     return jsonify({"status": "error", "message": "Invalid password"}), 401
@@ -194,20 +187,16 @@ def login():
 def change_password():
     if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    current_password = data.get('current_password')
-    new_password = data.get('new_password')
-    
-    if not db_check_password(current_password):
+    if not db_check_password(data.get('current_password')):
         return jsonify({"error": "Wrong current password"}), 400
-        
-    db_change_password(new_password)
+    db_change_password(data.get('new_password'))
     return jsonify({"status": "success"})
 
 @app.route('/api/status', methods=['GET'])
 def status():
     return jsonify({
         "authenticated": session.get('logged_in', False),
-        "external_ip": get_external_ip()
+        "external_ip": "0.0.0.0" # Simplification for container
     })
 
 @app.route('/api/logout', methods=['POST'])
@@ -225,11 +214,18 @@ def add_rule():
     if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
     data = request.json
     
+    # Validation
     error = validate_rule_data(data)
     if error: return jsonify({"error": error}), 400
+
+    # Conflict Check
+    existing_rules = db_get_rules()
+    conflict = check_port_conflict(data, existing_rules)
+    if conflict: return jsonify({"error": conflict}), 409
     
     new_rule = {
         "id": str(uuid.uuid4()),
+        "description": data.get('description', ''), # NEW Field
         "src_ip": data.get('src_ip', '0.0.0.0'),
         "src_port": str(data['src_port']), 
         "dst_ip": data['dst_ip'],
@@ -249,13 +245,17 @@ def update_rule(rule_id):
     error = validate_rule_data(data)
     if error: return jsonify({"error": error}), 400
     
-    rules = db_get_rules()
-    target_rule = next((r for r in rules if r['id'] == rule_id), None)
-            
+    existing_rules = db_get_rules()
+    target_rule = next((r for r in existing_rules if r['id'] == rule_id), None)
     if not target_rule: return jsonify({"error": "Not found"}), 404
+
+    # Check conflict excluding itself
+    conflict = check_port_conflict(data, existing_rules, ignore_id=rule_id)
+    if conflict: return jsonify({"error": conflict}), 409
 
     stop_socat(rule_id)
     target_rule.update({
+        'description': data.get('description', ''), # NEW
         'src_ip': data.get('src_ip', '0.0.0.0'),
         'src_port': str(data['src_port']),
         'dst_ip': data['dst_ip'],
@@ -281,6 +281,10 @@ def toggle_rule(rule_id):
     target_rule = next((r for r in rules if r['id'] == rule_id), None)
     
     if target_rule:
+        # Check conflict before enabling if ports changed by other means? 
+        # Usually update handles it, but good to be safe. 
+        # Skipping for now to keep toggle fast.
+        
         target_rule['enabled'] = not target_rule['enabled']
         db_save_rule(target_rule)
         if target_rule['enabled']: start_socat(target_rule)
@@ -291,7 +295,5 @@ def toggle_rule(rule_id):
 if __name__ == '__main__':
     init_db()
     sync_processes()
-    
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
