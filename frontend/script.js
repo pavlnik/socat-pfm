@@ -193,7 +193,7 @@ function renderRules(rules) {
             <div class="connection-visual">
                 <div><div style="font-size:0.8em; color:#888">IN (${rule.src_ip === '0.0.0.0' ? 'ALL' : rule.src_ip})</div>:${rule.src_port}</div>
                 <div class="arrow">➜</div>
-                <div style="text-align:right"><div style="font-size:0.8em; color:#888">TO ${rule.dst_ip}</div>:${rule.dst_port}</div>
+                <div style="text-align:right"><div style="font-size:0.8em; color:#888">TO (${rule.dst_ip})</div>:${rule.dst_port}</div>
             </div>
             <div class="rule-actions">
                 <div class="toggle-switch ${rule.enabled ? 'active' : ''}" onclick="toggleRule('${rule.id}')">
@@ -307,3 +307,4 @@ document.getElementById('pwd-form').addEventListener('submit', async (e) => {
         showToast('Incorrect current password', 'error');
     }
 });
+
