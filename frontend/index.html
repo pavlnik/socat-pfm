@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Socat Manager</title>
+    <title>Socat</title>
     <!-- Favicon (Server Icon) -->
     <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjM2I4MmY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHJ4PSIyIiByeT0iMiIvPjxyZWN0IHg9IjIiIHk9IjE0IiB3aWR0aD0iMjAiIGhlaWdodD0iOCIgcng9IjIiIHJ5PSIyIi8+PGxpbmUgeDE9IjYiIHkxPSI2IiB4Mj0iNi4wMSIgeTI9IjYiLz48bGluZSB4MT0iNiIgeTE9IjE4IiB4Mj0iNi4wMSIgeTI9IjE4Ii8+PC9zdmc+">
     <link rel="stylesheet" href="style.css">
@@ -15,13 +15,13 @@
     <!-- Login Screen -->
     <div id="login-screen" class="container">
         <div class="card login-card">
-            <h2>Access Restricted</h2>
+            <h2>Socat</h2>
             <form id="login-form">
                 <div class="input-group">
                     <label>Password</label>
                     <input type="password" id="password" required placeholder="••••••">
                 </div>
-                <button type="submit" class="btn primary full-width">Unlock</button>
+                <button type="submit" class="btn primary full-width">Login</button>
             </form>
         </div>
     </div>
@@ -61,17 +61,10 @@
             </div>
             <form id="rule-form">
                 <input type="hidden" id="rule_id">
-                
-                <div class="form-row">
-                    <div class="input-group">
-                        <label>Description <small>(Optional)</small></label>
-                        <input type="text" id="description" placeholder="e.g. Web Server">
-                    </div>
-                </div>
 
                 <div class="form-row">
                     <div class="input-group">
-                        <label>Inbound IP (Bind)</label>
+                        <label>Inbound IP</label>
                         <input type="text" id="src_ip" value="0.0.0.0">
                     </div>
                     <div class="input-group">
@@ -90,19 +83,24 @@
                     </div>
                 </div>
 
-                <div class="divider">➔ Destination</div>
-
                 <div class="form-row">
                     <div class="input-group">
-                        <label>Dest IP</label>
+                        <label>Destination IP</label>
                         <input type="text" id="dst_ip" required placeholder="10.8.0.2">
                     </div>
                     <div class="input-group">
-                        <label>Dest Port(s)</label>
+                        <label>Destination Port(s)</label>
                         <input type="text" id="dst_port" required placeholder="8080 or 9000-9005">
                     </div>
                 </div>
-
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>Description <small>(Optional)</small></label>
+                        <input type="text" id="description" placeholder="e.g. Web Server">
+                    </div>
+                </div>
+                
                 <div class="modal-actions">
                     <button type="button" class="btn secondary close-modal-btn">Cancel</button>
                     <button type="submit" class="btn primary">Save Rule</button>
@@ -153,3 +151,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+
