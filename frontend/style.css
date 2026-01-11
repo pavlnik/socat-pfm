@@ -1,128 +1,208 @@
 :root {
-    --bg: #121212; --card-bg: #1e1e1e; --primary: #3b82f6; --primary-hover: #2563eb;
-    --text: #e0e0e0; --text-muted: #a0a0a0; --danger: #ef4444; --success: #22c55e; --border: #333;
+    --bg: #121212; 
+    --card-bg: #1e1e1e; 
+    --primary: #3b82f6; 
+    --primary-hover: #2563eb;
+    --text: #e0e0e0; 
+    --text-muted: #a0a0a0; 
+    --danger: #ef4444; 
+    --success: #22c55e; 
+    --border: #333;
 }
+
 body { 
-    margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-    background-color: var(--bg); color: var(--text); height: 100vh; 
-    /* Предотвращаем горизонтальный скролл */
+    margin: 0; 
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+    background-color: var(--bg); 
+    color: var(--text); 
+    height: 100vh; 
     overflow-x: hidden; 
 }
+
 .hidden { display: none !important; }
 
-/* Buttons & Inputs */
-.btn { 
-    padding: 10px 16px; /* Больше область клика */
-    border: none; border-radius: 8px; cursor: pointer; 
-    font-weight: 500; transition: 0.2s; font-size: 14px; 
-    display: inline-flex; align-items: center; justify-content: center;
-}
-.btn.primary { background: var(--primary); color: white; }
-.btn.primary:hover { background: var(--primary-hover); }
-.btn.secondary { background: #333; color: white; }
-.btn.danger { background: var(--danger); color: white; }
-.full-width { width: 100%; }
+/* --- BUTTONS --- */
 
-.btn-with-icon {
+/* Базовый сброс для всех кнопок */
+.btn { 
+    border: none; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    transition: 0.2s; 
+    font-family: inherit;
+}
+
+/* Единый стиль для функциональных кнопок (Add, Pass, Logout) */
+.btn-adaptive {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px; 
+    gap: 8px;           
+    height: 40px;       
+    padding: 0 16px;    
+    font-size: 14px;    
+    font-weight: 500;
+    line-height: 1;     
+    box-sizing: border-box;
 }
 
-.btn-with-icon svg {
-    width: 18px;
+.btn-adaptive svg {
+    width: 18px;        
     height: 18px;
+    stroke-width: 2;    
     stroke: currentColor;
-    stroke-width: 2.5;
+    fill: none;         
 }
 
-/* Nav Buttons */
-.nav-actions { display: flex; gap: 8px; }
-.nav-btn {
-    background: transparent; border: 1px solid var(--border); color: var(--text);
-    padding: 9px 12px; gap: 6px;
-}
-.nav-btn:hover { background: #2a2a2a; border-color: #555; }
-.nav-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+/* Цветовые схемы кнопок */
+.btn.primary { background: var(--primary); color: white; }
+.btn.primary:hover { background: var(--primary-hover); }
 
-/* Icon Buttons (Card) */
-.btn-icon { background: transparent; color: var(--text-muted); padding: 8px; border-radius: 4px; }
+.btn.secondary { background: #333; color: white; padding: 10px 16px; font-size: 14px; font-weight: 500; }
+
+.btn.danger { background: var(--danger); color: white; padding: 10px 16px; font-size: 14px; font-weight: 500; }
+
+.btn-adaptive.nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.btn-adaptive.nav-btn:hover {
+    background: #2a2a2a;
+    border-color: #555;
+}
+
+/* Маленькие кнопки-иконки (в карточке правила) */
+.btn-icon { 
+    background: transparent; 
+    color: var(--text-muted); 
+    padding: 8px; 
+    border-radius: 4px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 .btn-icon:hover { background: #333; color: white; }
 .btn-icon.delete:hover { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
 .btn-icon svg { width: 20px; height: 20px; fill: currentColor; }
 .btn-group { display: flex; gap: 4px; }
 
-/* Inputs */
+/* --- INPUTS --- */
 input, select { 
-    background: #2a2a2a; border: 1px solid var(--border); 
-    color: white; padding: 12px; border-radius: 6px; 
-    width: 100%; box-sizing: border-box; 
-    font-size: 16px; /* Предотвращает зум на iOS */
+    background: #2a2a2a; 
+    border: 1px solid var(--border); 
+    color: white; 
+    padding: 12px; 
+    border-radius: 6px; 
+    width: 100%; 
+    box-sizing: border-box; 
+    font-size: 16px; /* No zoom on iOS */
+    font-family: inherit;
 }
 input:focus { outline: 2px solid var(--primary); border-color: transparent; }
 
-/* Notification Toast */
+/* --- NOTIFICATIONS --- */
 #notification-container { 
-    position: fixed; bottom: 20px; right: 20px; left: 20px; /* Растягиваем на моб */
-    z-index: 2000; display: flex; flex-direction: column; gap: 10px; 
-    align-items: flex-end; pointer-events: none; /* Пропускаем клики сквозь контейнер */
+    position: fixed; 
+    bottom: 20px; right: 20px; left: 20px; 
+    z-index: 2000; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    align-items: flex-end; 
+    pointer-events: none; 
 }
+
 .toast {
-    background: var(--card-bg); border-left: 4px solid var(--primary);
-    padding: 14px 20px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    color: white; animation: slideIn 0.3s ease-out; 
-    min-width: 200px; max-width: 100%; width: fit-content;
-    pointer-events: auto; /* Включаем клики на самих тостах */
+    background: var(--card-bg); 
+    border-left: 4px solid var(--primary);
+    padding: 14px 20px; 
+    border-radius: 6px; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    color: white; 
+    animation: slideIn 0.3s ease-out; 
+    min-width: 200px; 
+    max-width: 100%; 
+    width: fit-content;
+    pointer-events: auto; 
+    display: flex; 
+    align-items: center;
 }
 .toast.success { border-color: var(--success); }
 .toast.error { border-color: var(--danger); }
 @keyframes slideIn { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-/* Login */
+/* --- LOGIN SCREEN --- */
 .container { display: flex; justify-content: center; align-items: center; height: 100%; padding: 20px; box-sizing: border-box; }
 .card { background: var(--card-bg); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
 .login-card { width: 100%; max-width: 350px; }
 .login-card h2 { text-align: center; margin-top: 0; margin-bottom: 1.5rem; }
 .input-group { margin-bottom: 1rem; width: 100%; }
 .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9em; }
+.full-width { width: 100%; height: 40px; font-size: 16px; font-weight: 600; } /* Login button override */
 
-/* App Layout */
+/* --- APP LAYOUT --- */
 .navbar { 
-    background: var(--card-bg); padding: 1rem 2rem; 
-    display: flex; justify-content: space-between; align-items: center; 
+    background: var(--card-bg); 
+    padding: 0.8rem 2rem; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
     border-bottom: 1px solid var(--border); 
-    position: sticky; top: 0; z-index: 100; /* Закрепленная шапка */
+    position: sticky; top: 0; z-index: 100;
 }
+
 .logo { font-weight: bold; font-size: 1.2rem; }
 .logo span span { color: var(--primary); }
-
 .logo-desktop { display: inline; }
 .logo-mobile { display: none; }
+.nav-actions { display: flex; gap: 8px; }
 
 .main-content { padding: 2rem; max-width: 1000px; margin: 0 auto; }
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 10px; }
+
+.toolbar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 2rem; 
+    flex-wrap: wrap; 
+    gap: 10px; 
+}
 .toolbar h3 { margin: 0; }
 
-/* Rules Grid */
+/* --- RULES GRID --- */
 .rules-grid { 
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
     gap: 1rem; 
 }
-.rule-card { background: var(--card-bg); border-radius: 8px; padding: 1.25rem; border: 1px solid var(--border); transition: transform 0.2s; }
+
+.rule-card { 
+    background: var(--card-bg); 
+    border-radius: 8px; 
+    padding: 1.25rem; 
+    border: 1px solid var(--border); 
+    transition: transform 0.2s; 
+}
 .rule-card.disabled { opacity: 0.6; }
 
 .rule-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 10px; }
 .rule-title { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+
 .rule-desc { 
-    font-size: 0.9em; color: var(--text-muted); font-weight: 500;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+    font-size: 0.9em; 
+    color: var(--text-muted); 
+    font-weight: 500;
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
 }
+
 .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; background: #333; text-transform: uppercase; letter-spacing: 0.5px; }
 .badge.tcp { color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
 .badge.udp { color: #f472b6; background: rgba(244, 114, 182, 0.1); }
 
+/* --- CONNECTION VISUAL --- */
 .connection-visual { 
     display: flex; 
     align-items: center; 
@@ -136,8 +216,23 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     gap: 10px;
 }
 
-.connection-visual > div:first-child, .connection-visual > div:last-child { flex: 1; min-width: 0; word-break: break-all; }
-.arrow { color: var(--text-muted); padding: 0 5px; flex-shrink: 0; text-align: center; }
+.connection-visual > div:first-child,
+.connection-visual > div:last-child {
+    flex: 1;
+    min-width: 0;
+    word-break: break-all;
+}
+
+.connection-visual > div:first-child { text-align: right; }
+.connection-visual > div:last-child { text-align: left; }
+
+.arrow { 
+    color: var(--text-muted); 
+    padding: 0 5px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
 .rule-actions { display: flex; gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 
 /* Switch */
@@ -146,57 +241,58 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
 .active .indicator { background: var(--success); box-shadow: 0 0 8px var(--success); }
 .status-text { font-size: 0.9em; color: var(--text-muted); }
 
-/* Modal */
+/* --- MODAL --- */
 .modal { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; 
     backdrop-filter: blur(4px); z-index: 1000; padding: 10px; box-sizing: border-box;
 }
+
 .modal-content { 
     background: var(--card-bg); padding: 1.5rem; border-radius: 12px; 
     width: 450px; max-width: 100%; max-height: 90vh; overflow-y: auto;
     box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
 }
 .small-modal { width: 350px; }
+
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .close-modal, .close-pwd-modal, .close-confirm-modal { cursor: pointer; font-size: 1.8rem; color: var(--text-muted); line-height: 1; padding: 5px; }
+
 .form-row { display: flex; gap: 1rem; }
 .divider { display: flex; align-items: center; color: var(--text-muted); margin: 1.5rem 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #333; }
 .divider::before { margin-right: 15px; } 
 .divider::after { margin-left: 15px; }
+
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 2rem; }
 
-/* === MOBILE OPTIMIZATIONS === */
+/* --- MOBILE BREAKPOINT --- */
 @media (max-width: 600px) {
     .navbar { padding: 0.8rem 1rem; }
-    .logo { font-size: 1.1rem; }
-
     .logo-desktop { display: none; }
     .logo-mobile { display: inline; }
     
-    .nav-text { display: none; }
-    .nav-btn { padding: 9px; aspect-ratio: 1; }
+    .btn-adaptive span { display: none; }
+    
+    .btn-adaptive { padding: 0; width: 36px; gap: 0; }
     
     .main-content { padding: 1rem; }
-
-    .btn-with-icon .btn-text { display: none; }
-    .btn-with-icon { padding: 10px; aspect-ratio: 1; }
     
     .rules-grid { grid-template-columns: 1fr; }
     
-    .mobile-col { flex-direction: column; gap: 0; } 
+    .mobile-col { flex-direction: column; gap: 0; }
     .full-width-mobile { width: 100%; }
     
     .connection-visual { font-size: 1em; }
     
     .modal-content { padding: 1.2rem; width: 100%; }
-    .modal-actions { flex-direction: column-reverse; }
+    .modal-actions { flex-direction: column-reverse; } 
     .modal-actions button { width: 100%; padding: 12px; }
     
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
