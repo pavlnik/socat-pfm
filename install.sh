@@ -240,9 +240,7 @@ show_install_menu() {
         case $OPTION in
             1)
                 do_install
-                if [ -d "$INSTALL_DIR" ]; then
-                    show_installed_menu
-                fi
+                exit 0 
                 ;;
             2) exit 0 ;;
             *) echo "Invalid option"; sleep 1 ;;
