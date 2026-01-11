@@ -156,11 +156,24 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     
     /* Adjust visual for small screens */
     .connection-visual { 
-        flex-direction: column; align-items: flex-start; gap: 6px;
+        flex-direction: column; 
+        align-items: center;
+        gap: 8px;
         font-size: 1em;
+        padding: 15px;
     }
-    .arrow { transform: rotate(90deg); align-self: center; padding: 5px; }
-    .connection-visual > div { width: 100%; text-align: center; } /* Center text */
+    
+    .arrow { 
+        transform: rotate(90deg); 
+        align-self: center; 
+        padding: 5px; 
+        color: var(--primary);
+    }
+    
+    .connection-visual > div { 
+        width: 100%; 
+        text-align: center !important;
+    }
     
     .modal-content { padding: 1.2rem; width: 100%; }
     .modal-actions { flex-direction: column-reverse; } /* Save button on top/full width */
@@ -169,3 +182,4 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
