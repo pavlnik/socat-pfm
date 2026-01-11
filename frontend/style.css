@@ -23,6 +23,20 @@ body {
 .btn.danger { background: var(--danger); color: white; }
 .full-width { width: 100%; }
 
+.btn-with-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; 
+}
+
+.btn-with-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2.5;
+}
+
 /* Nav Buttons */
 .nav-actions { display: flex; gap: 8px; }
 .nav-btn {
@@ -164,6 +178,9 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     .nav-text { display: none; }
     
     .main-content { padding: 1rem; }
+
+    .btn-with-icon .btn-text { display: none; }
+    .btn-with-icon { padding: 10px; aspect-ratio: 1; }
     
     .rules-grid { grid-template-columns: 1fr; }
     
@@ -171,7 +188,6 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     .full-width-mobile { width: 100%; }
     
     .connection-visual { font-size: 1em; }
-    /*.arrow { transform: rotate(90deg); align-self: center; padding: 5px; }*/
     
     .modal-content { padding: 1.2rem; width: 100%; }
     .modal-actions { flex-direction: column-reverse; }
@@ -180,6 +196,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
