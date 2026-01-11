@@ -81,7 +81,11 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     position: sticky; top: 0; z-index: 100; /* Закрепленная шапка */
 }
 .logo { font-weight: bold; font-size: 1.2rem; }
-.logo span { color: var(--primary); }
+.logo span span { color: var(--primary); }
+
+.logo-desktop { display: inline; }
+.logo-mobile { display: none; }
+
 .main-content { padding: 2rem; max-width: 1000px; margin: 0 auto; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 10px; }
 .toolbar h3 { margin: 0; }
@@ -145,6 +149,10 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
 @media (max-width: 600px) {
     .navbar { padding: 0.8rem 1rem; }
     .logo { font-size: 1.1rem; }
+
+    .logo-desktop { display: none; }
+    .logo-mobile { display: inline; }
+    
     .nav-text { display: none; }
     
     .main-content { padding: 1rem; }
@@ -168,5 +176,6 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
