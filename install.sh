@@ -129,7 +129,9 @@ do_install() {
     create_service "$WEB_PORT"
 
     echo -e "\n${GREEN}Installation complete! Open: http://<YOUR_IP>:$WEB_PORT${NC}"
+    
     read -p "Press Enter to continue..."
+    exit 0
 }
 
 do_update() {
@@ -160,7 +162,9 @@ do_update() {
     systemctl restart "$SERVICE_NAME"
 
     echo -e "${GREEN}Update completed!${NC}"
+    
     read -p "Press Enter to continue..."
+    exit 0
 }
 
 do_change_port() {
@@ -174,7 +178,9 @@ do_change_port() {
     else
         create_service "$NEW_PORT"
     fi
+   
     read -p "Press Enter to continue..."
+    exit 0
 }
 
 do_uninstall() {
@@ -199,7 +205,8 @@ do_uninstall() {
         find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 ! -name "data" -exec rm -rf {} +
         echo "App removed. Data kept in $INSTALL_DIR/data"
     fi
-
+    
+    read -p "Press Enter to continue..."
     exit 0
 }
 
@@ -238,10 +245,7 @@ show_install_menu() {
         echo "========================================="
         read -p "Choose an option: " OPTION
         case $OPTION in
-            1)
-                do_install
-                exit 0 
-                ;;
+            1) do_install ;;
             2) exit 0 ;;
             *) echo "Invalid option"; sleep 1 ;;
         esac
