@@ -223,9 +223,6 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     word-break: break-all;
 }
 
-.connection-visual > div:first-child { text-align: right; }
-.connection-visual > div:last-child { text-align: left; }
-
 .arrow { 
     color: var(--text-muted); 
     padding: 0 5px;
@@ -292,6 +289,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
