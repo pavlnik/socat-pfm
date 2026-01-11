@@ -18,7 +18,7 @@ A modern, responsive web interface for managing TCP/UDP port forwarding with **S
 ### Automatic (Recommended)
 
 ```bash
-curl -o install.sh https://raw.githubusercontent.com/pavlnik/socat-pfm/main/install.sh && sudo bash install.sh
+bash <(curl -Ls https://raw.githubusercontent.com/pavlnik/socat-pfm/main/install.sh)
 ```
 
 The script handles:
