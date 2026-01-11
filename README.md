@@ -21,14 +21,6 @@ A modern, responsive web interface for managing TCP/UDP port forwarding with **S
 bash <(curl -Ls https://raw.githubusercontent.com/pavlnik/socat-pfm/main/install.sh)
 ```
 
-The script handles:
-- ✅ OS detection (apt/yum/dnf)
-- ✅ Dependency installation
-- ✅ Git cloning to `/opt/socat-pfm`
-- ✅ Python venv setup
-- ✅ Systemd service creation
-- ✅ Service auto-start
-
 ### Manual
 
 ```bash
@@ -44,8 +36,8 @@ docker run -d \
   --name socat-pfm \
   --restart always \
   --network host \
-  -e FLASK_PORT=5000 \
-  -v socat-data:/app/data \
+  -e PORT=5000 \
+  -v ~/socat-data:/app/data \
   ghcr.io/pavlnik/socat-pfm:latest
 ```
 
