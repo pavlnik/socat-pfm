@@ -15,52 +15,6 @@ A modern, responsive web interface for managing TCP/UDP port forwarding with **S
 
 ---
 
-## Quick Start
-
-### One-Liner Installation
-
-```bash
-curl -o install.sh https://raw.githubusercontent.com/pavlnik/socat-pfm/main/install.sh && sudo bash install.sh
-```
-
-The installer will automatically:
-1. Detect your OS (Ubuntu, CentOS, Fedora, Debian, etc.)
-2. Install system dependencies
-3. Clone the repository
-4. Setup Python virtualenv
-5. Configure systemd service
-6. Start the application
-
-### Interactive Menu
-
-The installer is now **menu-driven**:
-
-**First run (fresh install):**
-```bash
-Welcome to Socat PFM - Setup
-1. Install
-2. Exit
-```
-
-**Subsequent runs (already installed):**
-```bash
-Socat PFM - Manager
-1. Update
-2. Change port
-3. Uninstall
-4. Exit
-```
-
-**Default credentials:**
-- Password: `admin` (⚠️ change immediately!)
-
-**Access the app:**
-```
-http://<your-server-ip>:5000
-```
-
----
-
 ## Installation
 
 ### Automatic (Recommended)
@@ -104,6 +58,16 @@ docker run -d \
 ---
 
 ## Usage
+
+
+### Access the app
+
+```
+http://<your-server-ip>:5000
+```
+
+**Default credentials:**
+- Password: `admin` (⚠️ change immediately!)
 
 ### Creating a Port Forward Rule
 
