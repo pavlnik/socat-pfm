@@ -13,8 +13,6 @@ A modern, responsive web interface for managing TCP/UDP port forwarding with **S
 - 🎨 Dark theme with real-time status indicators
 - 📊 Beautiful Toast notifications
 
----
-
 ## Installation
 
 ### Automatic (Recommended)
@@ -39,8 +37,6 @@ cd socat-pfm
 sudo bash install.sh
 ```
 
----
-
 ### Docker
 
 ```bash
@@ -55,7 +51,6 @@ docker run -d \
 
 **⚠️ Important:** Use `--network host` so Socat can bind to any port on the host. In bridge mode, port forwarding only works inside the container.
 
----
 
 ## Usage
 
@@ -102,8 +97,6 @@ Inbound: 0.0.0.0:53 (UDP)
 Dest: 8.8.8.8:53
 ```
 
----
-
 ## Configuration
 
 ### Change Port After Installation
@@ -138,5 +131,3 @@ Backup:
 ```bash
 sudo cp /opt/socat-pfm/data/socat.db ~/socat.db.backup
 ```
-
----
