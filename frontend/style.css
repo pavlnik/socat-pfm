@@ -176,7 +176,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     .logo-mobile { display: inline; }
     
     .nav-text { display: none; }
-    .nav-btn { padding: 8px 10px;}
+    .nav-btn { padding: 7px 10px;}
     
     .main-content { padding: 1rem; }
 
@@ -197,6 +197,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
