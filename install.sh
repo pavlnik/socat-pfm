@@ -5,7 +5,7 @@
 # ==========================================
 
 # Paths and names
-REPO_URL="https://github.com/pavlnik/socat-web.git"
+REPO_URL="https://github.com/pavlnik/socat-pfm.git"
 INSTALL_DIR="/opt/socat-pfm"
 SERVICE_NAME="socat-pfm"
 DEFAULT_PORT=5000
