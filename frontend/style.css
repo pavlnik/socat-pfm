@@ -274,7 +274,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     
     .btn-adaptive span { display: none; }
     
-    .btn-adaptive { padding: 0; width: 36px; gap: 0; }
+    .btn-adaptive { padding: 0; width: 36px 36px; gap: 0; }
     
     .main-content { padding: 1rem; }
     
@@ -292,6 +292,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
