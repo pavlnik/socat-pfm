@@ -109,19 +109,20 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
 .badge.tcp { color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
 .badge.udp { color: #f472b6; background: rgba(244, 114, 182, 0.1); }
 
-/* Connection Visual */
 .connection-visual { 
     display: flex; 
     align-items: center; 
-    justify-content: center; 
+    justify-content: center; /* Центрируем контент */
     font-family: monospace; 
     font-size: 1.1em; 
     margin-bottom: 1.5rem; 
     background: rgba(0,0,0,0.2); 
     padding: 10px; 
     border-radius: 6px;
+    gap: 10px; /* Фиксированный отступ */
 }
 
+/* Блоки с IP-адресами (левый и правый) */
 .connection-visual > div:first-child,
 .connection-visual > div:last-child {
     flex: 1;             /* Занимают равную ширину */
@@ -129,9 +130,17 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     word-break: break-all; /* Перенос длинных строк на моб */
 }
 
-.connection-visual > div:first-child { text-align: right; }
-.connection-visual > div:last-child { text-align: left; }
+/* Левая часть (IN) - выравнивание вправо к стрелке */
+.connection-visual > div:first-child {
+    text-align: right;
+}
 
+/* Правая часть (OUT) - выравнивание влево от стрелки */
+.connection-visual > div:last-child {
+    text-align: left;
+}
+
+/* Стрелка - фиксированная ширина, по центру */
 .arrow { 
     color: var(--text-muted); 
     padding: 0 5px;
@@ -199,6 +208,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
