@@ -111,11 +111,34 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
 
 /* Connection Visual */
 .connection-visual { 
-    display: flex; align-items: center; justify-content: space-between; 
-    font-family: monospace; font-size: 1.1em; margin-bottom: 1.5rem; 
-    background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-family: monospace; 
+    font-size: 1.1em; 
+    margin-bottom: 1.5rem; 
+    background: rgba(0,0,0,0.2); 
+    padding: 10px; 
+    border-radius: 6px;
 }
-.arrow { color: var(--text-muted); padding: 0 10px; }
+
+.connection-visual > div:first-child,
+.connection-visual > div:last-child {
+    flex: 1;             /* Занимают равную ширину */
+    min-width: 0;        /* Позволяет сжиматься, если текст очень длинный */
+    word-break: break-all; /* Перенос длинных строк на моб */
+}
+
+.connection-visual > div:first-child { text-align: right; }
+.connection-visual > div:last-child { text-align: left; }
+
+.arrow { 
+    color: var(--text-muted); 
+    padding: 0 5px;
+    flex-shrink: 0; /* Не сжимать стрелку */
+    text-align: center;
+}
+
 .rule-actions { display: flex; gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 
 /* Switch */
@@ -176,6 +199,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
