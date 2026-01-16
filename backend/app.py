@@ -1,299 +1,413 @@
 import os
 import json
 import subprocess
-import sys
 import uuid
 import socket
 import sqlite3
+
 from flask import Flask, request, jsonify, send_from_directory, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Configuration
+
+# --- Paths ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
-FRONTEND_DIR = os.path.join(os.path.dirname(BASE_DIR), 'frontend')
+PROJECT_DIR = os.path.dirname(BASE_DIR)
+DATA_DIR = os.path.join(PROJECT_DIR, 'data')
+FRONTEND_DIR = os.path.join(PROJECT_DIR, 'frontend')
 DB_FILE = os.path.join(DATA_DIR, 'socat.db')
 
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 app = Flask(__name__, static_folder=FRONTEND_DIR)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 
-active_processes = {}
+active_processes = {}  # {rule_id: [Popen, ...]}
 
-# --- DATABASE ---
+
+# --- DB helpers ---
 def get_db():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
+
+def db_get_config(key):
     conn = get_db()
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS rules (id TEXT PRIMARY KEY, data TEXT)''')
-    
-    c.execute("SELECT value FROM config WHERE key='password_hash'")
-    if not c.fetchone():
-        default_hash = generate_password_hash("admin")
-        c.execute("INSERT INTO config (key, value) VALUES (?, ?)", ('password_hash', default_hash))
-        print(">>> Default password set to: 'admin'")
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM config WHERE key=?", (key,))
+    row = cur.fetchone()
+    conn.close()
+    return row["value"] if row else None
+
+
+def db_set_config(key, value):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
+
+
+def init_db():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS rules (id TEXT PRIMARY KEY, data TEXT)")
+    conn.commit()
+    conn.close()
+
+    # Defaults
+    if not db_get_config("username"):
+        db_set_config("username", "admin")
+    if not db_get_config("password_hash"):
+        db_set_config("password_hash", generate_password_hash("admin"))
+
 
 def db_get_rules():
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT data FROM rules")
-    rows = c.fetchall()
+    cur = conn.cursor()
+    cur.execute("SELECT data FROM rules")
+    rows = cur.fetchall()
     conn.close()
-    return [json.loads(row['data']) for row in rows]
+
+    rules = []
+    for r in rows:
+        try:
+            rules.append(json.loads(r["data"]))
+        except Exception:
+            pass
+    return rules
+
 
 def db_save_rule(rule):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO rules (id, data) VALUES (?, ?)", (rule['id'], json.dumps(rule)))
+    cur = conn.cursor()
+    cur.execute("INSERT OR REPLACE INTO rules (id, data) VALUES (?, ?)", (rule["id"], json.dumps(rule)))
     conn.commit()
     conn.close()
+
 
 def db_delete_rule(rule_id):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("DELETE FROM rules WHERE id=?", (rule_id,))
+    cur = conn.cursor()
+    cur.execute("DELETE FROM rules WHERE id=?", (rule_id,))
     conn.commit()
     conn.close()
 
-def db_check_password(password):
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT value FROM config WHERE key='password_hash'")
-    row = c.fetchone()
-    conn.close()
-    return row and check_password_hash(row['value'], password)
 
-def db_change_password(new_password):
-    new_hash = generate_password_hash(new_password)
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", ('password_hash', new_hash))
-    conn.commit()
-    conn.close()
+# --- Auth helpers ---
+def db_check_credentials(username, password):
+    stored_user = db_get_config("username") or ""
+    stored_hash = db_get_config("password_hash") or ""
+    if not stored_user or not stored_hash:
+        return False
+    if username != stored_user:
+        return False
+    return check_password_hash(stored_hash, password)
 
-# --- LOGIC ---
+
+def db_set_credentials(username, password):
+    db_set_config("username", username)
+    db_set_config("password_hash", generate_password_hash(password))
+
+
+# --- Network helpers ---
+def get_external_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "0.0.0.0"
+
+
 def parse_port_range(port_str):
     try:
-        if '-' in str(port_str):
-            start, end = map(int, str(port_str).split('-'))
-            if start > end: return []
+        p = str(port_str).strip()
+        if "-" in p:
+            a, b = p.split("-", 1)
+            start, end = int(a), int(b)
+            if start > end:
+                return []
             return list(range(start, end + 1))
-        else:
-            return [int(port_str)]
-    except ValueError:
+        return [int(p)]
+    except Exception:
         return []
 
-def check_port_conflict(new_rule, rules, ignore_id=None):
-    """
-    Checks if new_rule's source ports overlap with any existing rules
-    that have the same protocol.
-    """
-    new_ports = set(parse_port_range(new_rule['src_port']))
-    new_proto = new_rule['proto'].upper()
-
-    for r in rules:
-        if ignore_id and r['id'] == ignore_id:
-            continue
-        
-        if r['proto'].upper() != new_proto:
-            continue
-
-        existing_ports = set(parse_port_range(r['src_port']))
-        
-        # Check intersection
-        conflict = new_ports.intersection(existing_ports)
-        if conflict:
-            return f"Conflict: Port(s) {list(conflict)} are already used by rule (ID: {r['id'][:8]}...)"
-    return None
 
 def validate_rule_data(data):
-    src_ports = parse_port_range(data['src_port'])
-    dst_ports = parse_port_range(data['dst_port'])
+    src_ports = parse_port_range(data.get("src_port"))
+    dst_ports = parse_port_range(data.get("dst_port"))
+
     if not src_ports or not dst_ports:
         return "Invalid port format"
+
     if len(src_ports) != len(dst_ports):
         return "Port range mismatch: Source and Dest must have same count"
+
+    proto = (data.get("proto") or "TCP").upper()
+    if proto not in ("TCP", "UDP"):
+        return "Invalid protocol"
+
     return None
 
-def start_socat(rule):
-    rule_id = rule['id']
-    stop_socat(rule_id)
-    if not rule.get('enabled', False): return
 
-    src_ports = parse_port_range(rule['src_port'])
-    dst_ports = parse_port_range(rule['dst_port'])
-    processes = []
-    
+def check_port_conflict(candidate, rules, ignore_id=None):
+    cand_proto = (candidate.get("proto") or "TCP").upper()
+    cand_ports = set(parse_port_range(candidate.get("src_port")))
+
+    for r in rules:
+        if ignore_id and r.get("id") == ignore_id:
+            continue
+
+        if (r.get("proto") or "TCP").upper() != cand_proto:
+            continue
+
+        used_ports = set(parse_port_range(r.get("src_port")))
+        inter = cand_ports.intersection(used_ports)
+        if inter:
+            sample = sorted(list(inter))[:20]
+            return f"Conflict: inbound port(s) already used for {cand_proto}: {sample}"
+    return None
+
+
+# --- Socat management ---
+def stop_socat(rule_id):
+    procs = active_processes.get(rule_id, [])
+    for p in procs:
+        try:
+            if p.poll() is None:
+                p.terminate()
+                try:
+                    p.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+        except Exception:
+            pass
+    if rule_id in active_processes:
+        del active_processes[rule_id]
+
+
+def start_socat(rule):
+    rule_id = rule["id"]
+    stop_socat(rule_id)
+
+    if not rule.get("enabled", False):
+        return
+
+    src_ports = parse_port_range(rule.get("src_port"))
+    dst_ports = parse_port_range(rule.get("dst_port"))
+    proto = (rule.get("proto") or "TCP").upper()
+    src_ip = rule.get("src_ip") or "0.0.0.0"
+    dst_ip = rule.get("dst_ip")
+
+    procs = []
     for i in range(len(src_ports)):
         sport = src_ports[i]
         dport = dst_ports[i]
-        proto = rule['proto'].upper()
-        
-        # bind=... is important so we don't bind to all interfaces unless specified
-        listen_part = f"{proto}-LISTEN:{sport},fork,bind={rule['src_ip']}"
-        connect_part = f"{proto}:{rule['dst_ip']}:{dport}"
+
+        listen_part = f"{proto}-LISTEN:{sport},fork,bind={src_ip}"
+        connect_part = f"{proto}:{dst_ip}:{dport}"
         cmd = ["socat", listen_part, connect_part]
-        
+
         try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            processes.append(proc)
-        except Exception as e:
-            print(f"Error starting {sport}->{dport}: {e}")
+            p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            procs.append(p)
+        except Exception:
+            # if one fails, keep trying others
+            pass
 
-    if processes:
-        active_processes[rule_id] = processes
+    if procs:
+        active_processes[rule_id] = procs
 
-def stop_socat(rule_id):
-    if rule_id in active_processes:
-        for proc in active_processes[rule_id]:
-            if proc.poll() is None:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=1)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-        del active_processes[rule_id]
 
 def sync_processes():
-    rules = db_get_rules()
-    for rule in rules:
-        if rule.get('enabled'):
+    for rule in db_get_rules():
+        if rule.get("enabled"):
             start_socat(rule)
 
+
+# --- Routes / Static ---
+@app.route("/")
+def index():
+    return send_from_directory(FRONTEND_DIR, "index.html")
+
+
+@app.route("/<path:path>")
+def static_files(path):
+    return send_from_directory(FRONTEND_DIR, path)
+
+
 # --- API ---
-@app.route('/')
-def index(): return send_from_directory(FRONTEND_DIR, 'index.html')
-
-@app.route('/<path:path>')
-def static_files(path): return send_from_directory(FRONTEND_DIR, path)
-
-@app.route('/api/login', methods=['POST'])
-def login():
-    if db_check_password(request.json.get('password')):
-        session['logged_in'] = True
-        return jsonify({"status": "success"})
-    return jsonify({"status": "error", "message": "Invalid password"}), 401
-
-@app.route('/api/change-password', methods=['POST'])
-def change_password():
-    if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
-    data = request.json
-    if not db_check_password(data.get('current_password')):
-        return jsonify({"error": "Wrong current password"}), 400
-    db_change_password(data.get('new_password'))
-    return jsonify({"status": "success"})
-
-@app.route('/api/status', methods=['GET'])
+@app.route("/api/status", methods=["GET"])
 def status():
     return jsonify({
-        "authenticated": session.get('logged_in', False),
-        "external_ip": "0.0.0.0" # Simplification for container
+        "authenticated": session.get("logged_in", False),
+        "external_ip": get_external_ip()
     })
 
-@app.route('/api/logout', methods=['POST'])
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.json or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    if db_check_credentials(username, password):
+        session["logged_in"] = True
+        return jsonify({"status": "success"})
+
+    return jsonify({"status": "error", "message": "Invalid credentials"}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
 def logout():
-    session.pop('logged_in', None)
+    session.pop("logged_in", None)
     return jsonify({"status": "success"})
 
-@app.route('/api/rules', methods=['GET'])
-def get_rules():
-    if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
+
+@app.route("/api/change-credentials", methods=["POST"])
+def change_credentials():
+    if not session.get("logged_in"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json or {}
+    old_username = (data.get("old_username") or "").strip()
+    old_password = data.get("old_password") or ""
+    new_username = (data.get("new_username") or "").strip()
+    new_password = data.get("new_password") or ""
+
+    if not db_check_credentials(old_username, old_password):
+        return jsonify({"error": "Wrong current login/password"}), 400
+
+    if not new_username:
+        return jsonify({"error": "New login cannot be empty"}), 400
+
+    if not new_password:
+        return jsonify({"error": "New password cannot be empty"}), 400
+
+    db_set_credentials(new_username, new_password)
+    return jsonify({"status": "success"})
+
+
+@app.route("/api/rules", methods=["GET"])
+def api_get_rules():
+    if not session.get("logged_in"):
+        return jsonify({"error": "Unauthorized"}), 401
     return jsonify(db_get_rules())
 
-@app.route('/api/rules', methods=['POST'])
-def add_rule():
-    if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
-    data = request.json
-    
-    # Validation
-    error = validate_rule_data(data)
-    if error: return jsonify({"error": error}), 400
 
-    # Conflict Check
-    existing_rules = db_get_rules()
-    conflict = check_port_conflict(data, existing_rules)
-    if conflict: return jsonify({"error": conflict}), 409
-    
+@app.route("/api/rules", methods=["POST"])
+def api_add_rule():
+    if not session.get("logged_in"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json or {}
+    err = validate_rule_data(data)
+    if err:
+        return jsonify({"error": err}), 400
+
+    rules = db_get_rules()
+    conflict = check_port_conflict(data, rules)
+    if conflict:
+        return jsonify({"error": conflict}), 409
+
     new_rule = {
         "id": str(uuid.uuid4()),
-        "description": data.get('description', ''), # NEW Field
-        "src_ip": data.get('src_ip', '0.0.0.0'),
-        "src_port": str(data['src_port']), 
-        "dst_ip": data['dst_ip'],
-        "dst_port": str(data['dst_port']),
-        "proto": data.get('proto', 'TCP'),
+        "description": (data.get("description") or "").strip(),
+        "src_ip": (data.get("src_ip") or "0.0.0.0").strip(),
+        "src_port": str(data.get("src_port")).strip(),
+        "dst_ip": (data.get("dst_ip") or "").strip(),
+        "dst_port": str(data.get("dst_port")).strip(),
+        "proto": (data.get("proto") or "TCP").upper(),
         "enabled": False
     }
-    
+
     db_save_rule(new_rule)
     return jsonify(new_rule)
 
-@app.route('/api/rules/<rule_id>', methods=['PUT'])
-def update_rule(rule_id):
-    if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
-    data = request.json
-    
-    error = validate_rule_data(data)
-    if error: return jsonify({"error": error}), 400
-    
-    existing_rules = db_get_rules()
-    target_rule = next((r for r in existing_rules if r['id'] == rule_id), None)
-    if not target_rule: return jsonify({"error": "Not found"}), 404
 
-    # Check conflict excluding itself
-    conflict = check_port_conflict(data, existing_rules, ignore_id=rule_id)
-    if conflict: return jsonify({"error": conflict}), 409
+@app.route("/api/rules/<rule_id>", methods=["PUT"])
+def api_update_rule(rule_id):
+    if not session.get("logged_in"):
+        return jsonify({"error": "Unauthorized"}), 401
 
+    data = request.json or {}
+    err = validate_rule_data(data)
+    if err:
+        return jsonify({"error": err}), 400
+
+    rules = db_get_rules()
+    target = next((r for r in rules if r.get("id") == rule_id), None)
+    if not target:
+        return jsonify({"error": "Not found"}), 404
+
+    conflict = check_port_conflict(data, rules, ignore_id=rule_id)
+    if conflict:
+        return jsonify({"error": conflict}), 409
+
+    # stop before changing
     stop_socat(rule_id)
-    target_rule.update({
-        'description': data.get('description', ''), # NEW
-        'src_ip': data.get('src_ip', '0.0.0.0'),
-        'src_port': str(data['src_port']),
-        'dst_ip': data['dst_ip'],
-        'dst_port': str(data['dst_port']),
-        'proto': data.get('proto', 'TCP')
-    })
-    
-    db_save_rule(target_rule)
-    if target_rule['enabled']: start_socat(target_rule)
-    return jsonify(target_rule)
 
-@app.route('/api/rules/<rule_id>', methods=['DELETE'])
-def delete_rule(rule_id):
-    if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
+    target.update({
+        "description": (data.get("description") or "").strip(),
+        "src_ip": (data.get("src_ip") or "0.0.0.0").strip(),
+        "src_port": str(data.get("src_port")).strip(),
+        "dst_ip": (data.get("dst_ip") or "").strip(),
+        "dst_port": str(data.get("dst_port")).strip(),
+        "proto": (data.get("proto") or "TCP").upper(),
+    })
+
+    db_save_rule(target)
+
+    if target.get("enabled"):
+        start_socat(target)
+
+    return jsonify(target)
+
+
+@app.route("/api/rules/<rule_id>", methods=["DELETE"])
+def api_delete_rule(rule_id):
+    if not session.get("logged_in"):
+        return jsonify({"error": "Unauthorized"}), 401
+
     stop_socat(rule_id)
     db_delete_rule(rule_id)
     return jsonify({"status": "deleted"})
 
-@app.route('/api/rules/<rule_id>/toggle', methods=['POST'])
-def toggle_rule(rule_id):
-    if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
-    rules = db_get_rules()
-    target_rule = next((r for r in rules if r['id'] == rule_id), None)
-    
-    if target_rule:
-        # Check conflict before enabling if ports changed by other means? 
-        # Usually update handles it, but good to be safe. 
-        # Skipping for now to keep toggle fast.
-        
-        target_rule['enabled'] = not target_rule['enabled']
-        db_save_rule(target_rule)
-        if target_rule['enabled']: start_socat(target_rule)
-        else: stop_socat(rule_id)
-        return jsonify(target_rule)
-    return jsonify({"error": "Not found"}), 404
 
-if __name__ == '__main__':
+@app.route("/api/rules/<rule_id>/toggle", methods=["POST"])
+def api_toggle_rule(rule_id):
+    if not session.get("logged_in"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    rules = db_get_rules()
+    target = next((r for r in rules if r.get("id") == rule_id), None)
+    if not target:
+        return jsonify({"error": "Not found"}), 404
+
+    target["enabled"] = not bool(target.get("enabled"))
+    db_save_rule(target)
+
+    if target["enabled"]:
+        start_socat(target)
+    else:
+        stop_socat(rule_id)
+
+    return jsonify(target)
+
+
+if __name__ == "__main__":
     init_db()
     sync_processes()
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+
+    # installer uses PORT=...
+    port_env = os.environ.get("PORT") or os.environ.get("FLASK_PORT") or "5000"
+    try:
+        port = int(port_env)
+    except ValueError:
+        port = 5000
+
+    app.run(host="0.0.0.0", port=port)
