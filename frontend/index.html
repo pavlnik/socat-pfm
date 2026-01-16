@@ -1,192 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Socat Port Forward Manager</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <!-- Viewport важен для мобильных -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Socat PFM</title>
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjM2I4MmY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHJ4PSIyIiByeT0iMiIvPjxyZWN0IHg9IjIiIHk9IjE0IiB3aWR0aD0iMjAiIGhlaWdodD0iOCIgcng9IjIiIHJ5PSIyIi8+PGxpbmUgeDE9IjYiIHkxPSI2IiB4Mj0iNi4wMSIgeTI9IjYiLz48bGluZSB4MT0iNiIgeTE9IjE4IiB4Mj0iNi4wMSIgeTI9IjE4Ii8+PC9zdmc+">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Toast notifications -->
-  <div id="notification-container"></div>
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
 
-  <!-- Login Screen -->
-  <div id="login-screen" class="container">
-    <div class="card login-card">
-      <h2>Authorization</h2>
-      <form id="login-form" autocomplete="on">
-        <div class="input-group">
-          <label>Login</label>
-          <input type="text" id="username" name="username" required placeholder="admin" autocomplete="username">
+    <!-- Login Screen -->
+    <div id="login-screen" class="container">
+        <div class="card login-card">
+            <h2>Access Restricted</h2>
+            <form id="login-form">
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required placeholder="••••••">
+                </div>
+                <button type="submit" class="btn primary full-width">Unlock</button>
+            </form>
         </div>
-        <div class="input-group">
-          <label>Password</label>
-          <input type="password" id="password" name="password" required placeholder="••••••" autocomplete="current-password">
-        </div>
-        <button type="submit" class="btn primary full-width">Login</button>
-        <div id="login-error" class="error-msg"></div>
-      </form>
     </div>
-  </div>
 
-  <!-- App Screen -->
-  <div id="app-screen" class="hidden">
-    <nav class="navbar">
-      <div class="logo">
-        <span class="logo-desktop">Socat <span>Port Forward Manager</span></span>
-        <span class="logo-mobile">Socat <span>PFM</span></span>
-      </div>
+    <!-- App Screen -->
+    <div id="app-screen" class="hidden">
+        <nav class="navbar">
+            <div class="logo">
+                <span class="logo-desktop">Socat <span>Port Forward Manager</span></span>
+                <span class="logo-mobile">Socat <span>PFM</span></span>
+            </div>
+            <div class="nav-actions">
+                <button id="open-pwd-modal-btn" class="btn btn-adaptive nav-btn" title="Change Password">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span class="nav-text">Password</span>
+                </button>
+                <button id="logout-btn" class="btn btn-adaptive nav-btn" title="Logout">
+                    <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <span class="nav-text">Logout</span>
+                </button>
+            </div>
+        </nav>
 
-      <div class="nav-actions">
-        <button id="open-cred-modal-btn" class="btn btn-adaptive nav-btn" title="Credentials">
-          <!-- key/lock icon -->
-          <svg viewBox="0 0 24 24">
-            <path d="M21 10h-8a4 4 0 1 0 0 8h8v-3h-2v-2h2v-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-            <circle cx="9" cy="14" r="2" fill="none" stroke="currentColor" stroke-width="2"></circle>
-          </svg>
-          <span>Credentials</span>
-        </button>
+        <div class="main-content">
+            <div class="toolbar">
+                <h3>Rules</h3>
+                <button id="open-modal-btn" class="btn btn-adaptive primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span class="btn-text">Add Rule</span>
+                </button>
+            </div>
 
-        <button id="logout-btn" class="btn btn-adaptive nav-btn" title="Logout">
-          <svg viewBox="0 0 24 24">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-            <polyline points="16 17 21 12 16 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line>
-          </svg>
-          <span>Logout</span>
-        </button>
-      </div>
-    </nav>
-
-    <div class="main-content">
-      <div class="toolbar">
-        <h3>Rules</h3>
-
-        <button id="open-modal-btn" class="btn btn-adaptive primary" title="Add Rule">
-          <svg viewBox="0 0 24 24">
-            <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
-            <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
-          </svg>
-          <span>Add Rule</span>
-        </button>
-      </div>
-
-      <div id="rules-list" class="rules-grid"></div>
+            <div id="rules-list" class="rules-grid"></div>
+        </div>
     </div>
-  </div>
 
-  <!-- Rule Modal -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="modal-title">New Rule</h3>
-        <span class="close-modal">&times;</span>
-      </div>
+    <!-- Rule Modal -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">New Rule</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="rule-form">
+                <input type="hidden" id="rule_id">
 
-      <form id="rule-form" autocomplete="off">
-        <input type="hidden" id="rule_id">
+                <div class="form-row mobile-col">
+                    <div class="input-group">
+                        <label>Inbound IP</label>
+                        <input type="text" id="src_ip" value="0.0.0.0" required placeholder="0.0.0.0" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label>Inbound Port(s)</label>
+                        <input type="text" id="src_port" required placeholder="8080 or 8000-8005" inputmode="numeric">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>Protocol</label>
+                        <select id="proto">
+                            <option value="TCP">TCP</option>
+                            <option value="UDP">UDP</option>
+                        </select>
+                    </div>
+                </div>
 
-        <div class="form-row mobile-col">
-          <div class="input-group">
-            <label>Inbound IP</label>
-            <input type="text" id="src_ip" required value="0.0.0.0" placeholder="0.0.0.0" inputmode="decimal">
-          </div>
-          <div class="input-group">
-            <label>Inbound Port(s)</label>
-            <input type="text" id="src_port" required placeholder="8080 or 8000-8005" inputmode="numeric">
-          </div>
+                <div class="form-row mobile-col">
+                    <div class="input-group">
+                        <label>Destination IP</label>
+                        <input type="text" id="dst_ip" required placeholder="10.8.0.2" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label>Destination Port(s)</label>
+                        <input type="text" id="dst_port" required placeholder="8080" inputmode="numeric">
+                    </div>
+                </div>
+     
+                <div class="form-row">
+                    <div class="input-group full-width-mobile">
+                        <label>Description <small>(Optional)</small></label>
+                        <input type="text" id="description" placeholder="e.g. Web Server">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn primary">Save</button>
+                </div>
+            </form>
         </div>
-
-        <div class="form-row">
-          <div class="input-group">
-            <label>Protocol</label>
-            <select id="proto">
-              <option value="TCP">TCP</option>
-              <option value="UDP">UDP</option>
-            </select>
-          </div>
-        </div>
-          
-        <div class="form-row mobile-col">
-          <div class="input-group">
-            <label>Destination IP</label>
-            <input type="text" id="dst_ip" required placeholder="10.8.0.2" inputmode="decimal">
-          </div>
-          <div class="input-group">
-            <label>Destination Port(s)</label>
-            <input type="text" id="dst_port" required placeholder="8080 or 9000-9005" inputmode="numeric">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="input-group" style="flex:1">
-            <label>Description <small>(Optional)</small></label>
-            <input type="text" id="description" placeholder="e.g. VPN -> DB, Web, etc.">
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="btn secondary close-modal-btn">Cancel</button>
-          <button type="submit" class="btn primary">Save</button>
-        </div>
-      </form>
     </div>
-  </div>
 
-  <!-- Credentials Modal -->
-  <div id="cred-modal" class="modal hidden">
-    <div class="modal-content small-modal">
-      <div class="modal-header">
-        <h3>Change Credentials</h3>
-        <span class="close-cred-modal">&times;</span>
-      </div>
-
-      <form id="cred-form" autocomplete="off">
-        <div class="form-row mobile-col">
-          <div class="input-group" style="flex:1">
-            <label>Old login</label>
-            <input type="text" id="old_username" required autocomplete="username">
-          </div>
-          <div class="input-group" style="flex:1">
-            <label>Old password</label>
-            <input type="password" id="old_password" required autocomplete="current-password">
-          </div>
+    <!-- Password Modal -->
+    <div id="pwd-modal" class="modal hidden">
+        <div class="modal-content small-modal">
+            <div class="modal-header">
+                <h3>Change Password</h3>
+                <span class="close-pwd-modal">&times;</span>
+            </div>
+            <form id="pwd-form">
+                <div class="input-group">
+                    <label>Current Password</label>
+                    <input type="password" id="current_pwd" required>
+                </div>
+                <div class="input-group">
+                    <label>New Password</label>
+                    <input type="password" id="new_pwd" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary close-pwd-modal-btn">Cancel</button>
+                    <button type="submit" class="btn primary">Update</button>
+                </div>
+            </form>
         </div>
-
-        <div class="form-row mobile-col">
-          <div class="input-group" style="flex:1">
-            <label>New login</label>
-            <input type="text" id="new_username" required autocomplete="username">
-          </div>
-          <div class="input-group" style="flex:1">
-            <label>New password</label>
-            <input type="password" id="new_password" required autocomplete="new-password">
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="btn secondary close-cred-modal-btn">Cancel</button>
-          <button type="submit" class="btn primary">Update</button>
-        </div>
-      </form>
     </div>
-  </div>
 
-  <!-- Confirm Delete Modal -->
-  <div id="confirm-modal" class="modal hidden">
-    <div class="modal-content small-modal">
-      <div class="modal-header">
-        <h3>Confirm Action</h3>
-        <span class="close-confirm-modal">&times;</span>
-      </div>
-      <p>Are you sure you want to delete this rule?</p>
-      <div class="modal-actions">
-        <button type="button" class="btn secondary close-confirm-modal-btn">Cancel</button>
-        <button type="button" id="confirm-btn" class="btn danger">Delete</button>
-      </div>
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content small-modal">
+            <div class="modal-header">
+                <h3>Confirm Action</h3>
+                <span class="close-confirm-modal">&times;</span>
+            </div>
+            <p>Are you sure you want to delete this rule?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn secondary close-confirm-modal-btn">Cancel</button>
+                <button type="button" id="confirm-btn" class="btn danger">Delete</button>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
+
+
+
+
+
