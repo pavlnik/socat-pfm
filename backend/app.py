@@ -33,12 +33,38 @@ def init_db():
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS rules (id TEXT PRIMARY KEY, data TEXT)''')
-    
     c.execute("SELECT value FROM config WHERE key='password_hash'")
     if not c.fetchone():
         default_hash = generate_password_hash("admin")
         c.execute("INSERT INTO config (key, value) VALUES (?, ?)", ('password_hash', default_hash))
         print(">>> Default password set to: 'admin'")
+    c.execute("SELECT value FROM config WHERE key='username'")
+    if not c.fetchone():
+        c.execute("INSERT INTO config (key, value) VALUES (?, ?)", ('username', 'admin'))
+        print(">>> Default username set to: 'admin'")
+        
+    conn.commit()
+    conn.close()
+
+def db_check_credentials(username, password):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT value FROM config WHERE key='username'")
+    db_user = c.fetchone()
+    c.execute("SELECT value FROM config WHERE key='password_hash'")
+    db_pass = c.fetchone()
+    conn.close()
+    if db_user and db_pass:
+        if db_user['value'] == username and check_password_hash(db_pass['value'], password):
+            return True
+    return False
+
+def db_update_credentials(new_username, new_password):
+    new_hash = generate_password_hash(new_password)
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", ('username', new_username))
+    c.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", ('password_hash', new_hash))
     conn.commit()
     conn.close()
 
@@ -61,22 +87,6 @@ def db_delete_rule(rule_id):
     conn = get_db()
     c = conn.cursor()
     c.execute("DELETE FROM rules WHERE id=?", (rule_id,))
-    conn.commit()
-    conn.close()
-
-def db_check_password(password):
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT value FROM config WHERE key='password_hash'")
-    row = c.fetchone()
-    conn.close()
-    return row and check_password_hash(row['value'], password)
-
-def db_change_password(new_password):
-    new_hash = generate_password_hash(new_password)
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", ('password_hash', new_hash))
     conn.commit()
     conn.close()
 
@@ -178,18 +188,27 @@ def static_files(path): return send_from_directory(FRONTEND_DIR, path)
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    if db_check_password(request.json.get('password')):
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if db_check_credentials(username, password):
         session['logged_in'] = True
         return jsonify({"status": "success"})
-    return jsonify({"status": "error", "message": "Invalid password"}), 401
+    return jsonify({"status": "error", "message": "Invalid credentials"}), 401
 
-@app.route('/api/change-password', methods=['POST'])
-def change_password():
+@app.route('/api/change-credentials', methods=['POST'])
+def change_credentials():
     if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    if not db_check_password(data.get('current_password')):
-        return jsonify({"error": "Wrong current password"}), 400
-    db_change_password(data.get('new_password'))
+    
+    current_username = data.get('current_username')
+    current_password = data.get('current_password')
+    new_username = data.get('new_username')
+    new_password = data.get('new_password')
+    
+    if not db_check_credentials(current_username, current_password):
+        return jsonify({"error": "Wrong current credentials"}), 400
+    db_update_credentials(new_username, new_password)
     return jsonify({"status": "success"})
 
 @app.route('/api/status', methods=['GET'])
@@ -297,3 +316,4 @@ if __name__ == '__main__':
     sync_processes()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
