@@ -134,12 +134,39 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
 
 /* --- LOGIN SCREEN --- */
 .container { display: flex; justify-content: center; align-items: center; height: 100%; padding: 20px; box-sizing: border-box; }
-.card { background: var(--card-bg); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-.login-card { width: 100%; max-width: 350px; }
-.login-card h2 { text-align: center; margin-top: 0; margin-bottom: 1.5rem; }
-.input-group { margin-bottom: 1rem; width: 100%; }
-.input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9em; }
-.full-width { width: 100%; height: 40px; font-size: 16px; font-weight: 600; } /* Login button override */
+.card { background: var(--card-bg); padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+.login-card { width: 100%; max-width: 380px; }
+
+.login-card h2 { 
+    text-align: center; 
+    margin-top: 0; 
+    margin-bottom: 2rem; 
+    font-size: 1.5rem;
+}
+
+.input-group { 
+    margin-bottom: 1.25rem; 
+    width: 100%; 
+}
+
+.login-card .input-group:last-of-type {
+    margin-bottom: 2rem; 
+}
+
+.input-group label { 
+    display: block; 
+    margin-bottom: 0.5rem; 
+    color: var(--text-muted); 
+    font-size: 0.9em; 
+    font-weight: 500;
+}
+
+.full-width { 
+    width: 100%; 
+    height: 44px;
+    font-size: 16px; 
+    font-weight: 600; 
+}
 
 /* --- APP LAYOUT --- */
 .navbar { 
@@ -289,6 +316,7 @@ input:focus { outline: 2px solid var(--primary); border-color: transparent; }
     #notification-container { align-items: center; right: 0; left: 0; bottom: 10px; }
     .toast { width: 90%; text-align: center; justify-content: center; }
 }
+
 
 
 
