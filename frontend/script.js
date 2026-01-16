@@ -8,7 +8,7 @@ const ICONS = {
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
 const modal = document.getElementById('modal');
-const pwdModal = document.getElementById('pwd-modal');
+const credsModal = document.getElementById('creds-modal');
 const confirmModal = document.getElementById('confirm-modal');
 const notificationContainer = document.getElementById('notification-container');
 const ruleForm = document.getElementById('rule-form');
@@ -145,18 +145,21 @@ function showApp() {
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const password = e.target.password.value;
+    // Берем значения из новых ID
+    const username = document.getElementById('login_username').value;
+    const password = document.getElementById('login_password').value;
+    
     const res = await fetch(`${API}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ username, password }) // Отправляем пару
     });
     if (res.ok) { 
-        e.target.password.value = '';
+        document.getElementById('login_password').value = '';
         checkStatus(); 
         showToast('Welcome back!');
     } else { 
-        showToast('Invalid password', 'error');
+        showToast('Invalid credentials', 'error');
     }
 });
 
@@ -284,27 +287,41 @@ ruleForm.addEventListener('submit', async (e) => {
     }
 });
 
-// --- PASSWORD MODAL ---
-document.getElementById('open-pwd-modal-btn').onclick = () => pwdModal.classList.remove('hidden');
-document.querySelectorAll('.close-pwd-modal, .close-pwd-modal-btn').forEach(el => { el.onclick = () => pwdModal.classList.add('hidden'); });
+// --- CREDENTIALS MODAL ---
+document.getElementById('open-creds-modal-btn').onclick = () => {
+    document.getElementById('creds-form').reset();
+    credsModal.classList.remove('hidden');
+};
 
-document.getElementById('pwd-form').addEventListener('submit', async (e) => {
+document.querySelectorAll('.close-creds-modal, .close-creds-modal-btn').forEach(el => { 
+    el.onclick = () => credsModal.classList.add('hidden'); 
+});
+
+document.getElementById('creds-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const current_password = document.getElementById('current_pwd').value;
-    const new_password = document.getElementById('new_pwd').value;
     
-    const res = await fetch(`${API}/change-password`, {
+    const current_username = document.getElementById('old_username').value;
+    const current_password = document.getElementById('old_password').value;
+    const new_username = document.getElementById('new_username').value;
+    const new_password = document.getElementById('new_password').value;
+    
+    const res = await fetch(`${API}/change-credentials`, { // Новый URL
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ current_password, new_password })
+        body: JSON.stringify({ 
+            current_username, 
+            current_password, 
+            new_username, 
+            new_password 
+        })
     });
     
     if (res.ok) {
-        showToast('Password updated successfully');
-        pwdModal.classList.add('hidden');
+        showToast('Credentials updated successfully');
+        credsModal.classList.add('hidden');
         e.target.reset();
     } else {
-        showToast('Incorrect current password', 'error');
+        showToast('Incorrect current credentials', 'error');
     }
 });
 
